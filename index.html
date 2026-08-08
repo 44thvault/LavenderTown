@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Lavender Town — Game Boy Viewer</title>
+<style>
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; overflow: hidden; touch-action: none; }
+body { display: flex; justify-content: center; align-items: center; }
+.gameboy-container { position: relative; height: 96vh; height: 96dvh; aspect-ratio: 747 / 1280; max-width: 96vw; overflow: hidden; }
+.gameboy { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; pointer-events: none; user-select: none; -webkit-user-select: none; }
+.screen { position: absolute; left: 23.7%; top: 14.1%; width: 52.9%; height: 28.25%; overflow: hidden; background: #000; cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; }
+.screen:active { cursor: grabbing; }
+.screen img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center center; display: block; pointer-events: none; image-rendering: auto; }
+.counter { position: fixed; bottom: max(14px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); color: rgba(255,255,255,.55); font-family: "Courier New", monospace; font-size: 11px; letter-spacing: .16em; pointer-events: none; z-index: 10; }
+.previous-button, .next-button { position: absolute; border: none; background: transparent; padding: 0; margin: 0; cursor: pointer; z-index: 5; }
+.previous-button { left: 7.5%; top: 58.0%; width: 35.0%; height: 17.5%; }
+.next-button { right: 6.0%; top: 56%; width: 36%; height: 18%; }
+@media (max-aspect-ratio: 9/16) { .gameboy-container { height: auto; width: 96vw; aspect-ratio: 747 / 1280; } }
+@media (orientation: landscape) { .gameboy-container { height: 96dvh; width: auto; } }
+@media (max-height: 500px) { .counter { display: none; } }
+</style>
+</head>
+<body>
+<div class="gameboy-container" id="gameboyContainer">
+  <img class="gameboy" src="/gameboy.jpg" alt="Game Boy" draggable="false">
+  <div class="screen" id="screen">
+    <img id="artwork" src="/1.png" alt="" draggable="false">
+  </div>
+  <button class="previous-button" id="previousButton" aria-label="Previous image"></button>
+  <button class="next-button" id="nextButton" aria-label="Next image"></button>
+</div>
+<div class="counter" id="counter">01 / 44</div>
+<script>
+const TOTAL_IMAGES = 44;
+let currentImage = 1;
+const artwork = document.getElementById("artwork");
+const screen = document.getElementById("screen");
+const counter = document.getElementById("counter");
+const previousButton = document.getElementById("previousButton");
+const nextButton = document.getElementById("nextButton");
+const imageCache = [];
+for (let i = 1; i <= TOTAL_IMAGES; i++) {
+  const image = new Image();
+  image.src = `/${i}.png`;
+  imageCache.push(image);
+}
+function displayImage(number) {
+  if (number < 1) number = TOTAL_IMAGES;
+  if (number > TOTAL_IMAGES) number = 1;
+  currentImage = number;
+  artwork.src = `/${currentImage}.png`;
+  counter.textContent = `${String(currentImage).padStart(2, "0")} / ${TOTAL_IMAGES}`;
+}
+function nextImage() { displayImage(currentImage + 1); }
+function previousImage() { displayImage(currentImage - 1); }
+previousButton.addEventListener("click", previousImage);
+nextButton.addEventListener("click", nextImage);
+document.addEventListener("keydown", function(event) {
+  if (event.key === "ArrowRight" || event.key.toLowerCase() === "d") nextImage();
+  if (event.key === "ArrowLeft" || event.key.toLowerCase() === "a") previousImage();
+});
+let startX = 0;
+let startY = 0;
+let dragging = false;
+screen.addEventListener("pointerdown", function(event) {
+  dragging = true;
+  startX = event.clientX;
+  startY = event.clientY;
+  screen.setPointerCapture(event.pointerId);
+});
+screen.addEventListener("pointerup", function(event) {
+  if (!dragging) return;
+  dragging = false;
+  const differenceX = event.clientX - startX;
+  const differenceY = event.clientY - startY;
+  if (Math.abs(differenceY) > Math.abs(differenceX)) return;
+  const SWIPE_DISTANCE = 30;
+  if (differenceX < -SWIPE_DISTANCE) nextImage();
+  else if (differenceX > SWIPE_DISTANCE) previousImage();
+  else nextImage();
+});
+screen.addEventListener("pointercancel", function() { dragging = false; });
+let wheelLocked = false;
+window.addEventListener("wheel", function(event) {
+  event.preventDefault();
+  if (wheelLocked) return;
+  wheelLocked = true;
+  if (event.deltaY > 0) nextImage();
+  else previousImage();
+  setTimeout(function() { wheelLocked = false; }, 250);
+}, { passive: false });
+</script>
+</body>
+</html>
